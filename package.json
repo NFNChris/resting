@@ -1,0 +1,42 @@
+{
+  "name": "restpite",
+  "version": "0.0.0",
+  "description": "Define and Consume REST Services defined via JSON",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "cover": "istanbul cover _mocha",
+    "coveralls": "npm run cover -- --report lcovonly && cat ./coverage/lcov.info | coveralls"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NFNChris/restpite.git"
+  },
+  "keywords": [
+    "REST",
+    "JSON",
+    "Service"
+  ],
+  "author": "Chris Bricker <chris@newfanglednetworks.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NFNChris/restpite/issues"
+  },
+  "homepage": "https://github.com/NFNChris/restpite#readme",
+  "dependencies": {
+    "crypto": "0.0.3",
+    "csv": "^1.1.1",
+    "fs": "0.0.1-security",
+    "json-transmute": "^0.1.0",
+    "moment": "^2.18.1",
+    "querystring": "^0.2.0",
+    "rapidx2j": "^0.1.0",
+    "request": "^2.81.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "coveralls": "^2.13.0",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.2.0"
+  }
+}
