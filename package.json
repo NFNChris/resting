@@ -1,7 +1,7 @@
 {
-  "name": "restpite",
+  "name": "json-service",
   "version": "0.0.0",
-  "description": "Define and Consume REST Services defined via JSON",
+  "description": "Define and Consume REST Services via JSON",
   "main": "index.js",
   "scripts": {
     "test": "mocha",
@@ -10,19 +10,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NFNChris/restpite.git"
+    "url": "git+https://github.com/NFNChris/resting.git"
   },
   "keywords": [
     "REST",
+    "API",
     "JSON",
+    "XML",
     "Service"
   ],
   "author": "Chris Bricker <chris@newfanglednetworks.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/NFNChris/restpite/issues"
+    "url": "https://github.com/NFNChris/resting/issues"
   },
-  "homepage": "https://github.com/NFNChris/restpite#readme",
+  "homepage": "https://github.com/NFNChris/resting#readme",
   "dependencies": {
     "crypto": "0.0.3",
     "csv": "^1.1.1",

@@ -13,12 +13,12 @@ var crypto    = require('crypto'),
     fs        = require('fs');
     
 // Module exports
-module.exports = RestAPI;
+module.exports = Restup;
 
 // Constructor
-function RestAPI(options) {
+function Restup(options) {
   var root = this;
-
+  
   options        = options || {};
   this.path      = options.path || './services/';
   this.providers = JSON.parse(fs.readFileSync(this.path + 'providers.json'));
@@ -58,10 +58,10 @@ function RestAPI(options) {
   events.EventEmitter.call(this);
 }
 
-/** Extend RestAPI as an EventEmitter */
-util.inherits(RestAPI, events.EventEmitter);
+/** Extend Restup as an EventEmitter */
+util.inherits(Restup, events.EventEmitter);
 
-RestAPI.prototype.call = function(service, provider, inputs, callback) {
+Restup.prototype.call = function(service, provider, inputs, callback) {
   var root = this;
 
   if (!provider || typeof provider === 'object') {
@@ -75,6 +75,8 @@ RestAPI.prototype.call = function(service, provider, inputs, callback) {
   } else if (provider in this.providers && this.providers[provider].services
     && service in this.providers[provider].services) {
       this.providers[provider].services[service](inputs, callback);
+  } else {
+    throw new Error('Provider or service not found: [ ' + provider + ', ' + service + ' ]');
   }
 }
 
@@ -86,11 +88,11 @@ RestAPI.prototype.call = function(service, provider, inputs, callback) {
  * provided in a tree format.  This facilitates brevity within the services
  * definition file(s).
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {array} services Array of services (or child services) to process
  * @param {object} parentBuild Parent service parameters object
  */
-RestAPI.prototype.addServices = function(provider, services, parentBuild) {
+Restup.prototype.addServices = function(provider, services, parentBuild) {
   var root  = this;
   
   parentBuild            = parentBuild            || {};
@@ -108,10 +110,11 @@ RestAPI.prototype.addServices = function(provider, services, parentBuild) {
     Object.keys(service).forEach(function(key) {
       switch(key) {
         case 'name':
-          build.parameters['Action'] = service[key];
+          //@TODO remove this - remnant of Amazon-only use
+          //build.parameters['Action'] = service[key];
           build[key] = service[key];
         break;
-        case 'body':
+        //case 'body':
         case 'parameters':
           build[key] = build[key] || {};
           
@@ -143,13 +146,13 @@ RestAPI.prototype.addServices = function(provider, services, parentBuild) {
 /**
  * Provide a method to access a service
  *
- * Prototype a function on the RestAPI object that provides access to a 
+ * Prototype a function on the Restup object that provides access to a 
  * specific service as defined the service build object.
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} build Service creation parameters
  */
-RestAPI.prototype.addService = function(provider, service) {
+Restup.prototype.addService = function(provider, service) {
   var root     = this,
       aliasArr = service.alias || [];
       
@@ -180,13 +183,13 @@ RestAPI.prototype.addService = function(provider, service) {
     });    
   
     /** Include credentials in service parameters */
-    Object.keys(provider.tokens).forEach(function(key) {
+    Object.keys(provider.tokens || {}).forEach(function(key) {
       build.inputs['@' + key] = provider.tokens[key];
     });
   
     /** Perform token individual token replacements */
-    build.endpoint = root.tokenReplace(build.endpoint, build.inputs);
-    build.path = root.tokenReplace(build.path, build.inputs);
+    //build.endpoint = root.tokenReplace(build.endpoint, build.inputs);
+    //build.path = root.tokenReplace(build.path, build.inputs);
     
     /** Perform object token replacements */
     root.tokenReplaceAll(build, build.inputs);
@@ -215,11 +218,11 @@ RestAPI.prototype.addService = function(provider, service) {
  * Iterate over an object's keys and performs token replacement using the values
  * contained within inputs.
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} parameters Service parameters requiring replacement
  * @param {object} inputs Replacement values
  */
-RestAPI.prototype.tokenReplaceAll = function(params, inputs) {
+Restup.prototype.tokenReplaceAll = function(params, inputs) {
   var regExp = new RegExp('\{\{(.+?)\}\}', 'g'),
       root   = this;
       
@@ -282,11 +285,11 @@ RestAPI.prototype.tokenReplaceAll = function(params, inputs) {
 /**
  * Perform parameter token replacement for a given string value
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} parameters Service parameters requiring replacement
  * @param {object} inputs Replacement values
  */
-RestAPI.prototype.tokenReplace = function(value, inputs) {
+Restup.prototype.tokenReplace = function(value, inputs) {
   var regExp = new RegExp('\{\{(.+?)\}\}', 'gm');
 
   while (tokenMatch = regExp.exec(value)) {
@@ -311,10 +314,10 @@ RestAPI.prototype.tokenReplace = function(value, inputs) {
  * quota pools here when services are first defined.  Services with shared 
  * pools will specify a quotaGroup parameter.
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} tokens Token key value pairs
  */
-RestAPI.prototype.initQuota = function(provider, service) {
+Restup.prototype.initQuota = function(provider, service) {
   if (service.quotaPool) {
     service.quotaGroup = service.quotaGroup || service.name;
     
@@ -342,10 +345,10 @@ RestAPI.prototype.initQuota = function(provider, service) {
  * than one field is present from quotaFields in a given call, the field with 
  * the largest number of items will be used to decrement the available pool.
  *
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} quota Quota definition object
  */
-RestAPI.prototype.consumeQuota = function(provider, service) {
+Restup.prototype.consumeQuota = function(provider, service) {
   var quota      = provider.quotas[service.quotaGroup],
       fields     = service.quotaFields,
       itemCounts = [];
@@ -378,10 +381,10 @@ RestAPI.prototype.consumeQuota = function(provider, service) {
  * available call pool or invoke any services backlogged in the queue as calls
  * become available.
  *
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} quota Quota definition object
  */
-RestAPI.prototype.restoreQuota = function(provider, service, offset) {
+Restup.prototype.restoreQuota = function(provider, service, offset) {
   var quota = provider.quotas[service.quotaGroup],
       root  = this;
   
@@ -414,10 +417,10 @@ RestAPI.prototype.restoreQuota = function(provider, service, offset) {
  * available immediately for call.  Available services (and services without
  * quotas) are called immediately.
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} service Service definition object
  */
-RestAPI.prototype.queueService = function(provider, service) {
+Restup.prototype.queueService = function(provider, service) {
   var quotaGroup = service.quotaGroup || service.name,
       quota      = provider.quotas[quotaGroup];
       
@@ -441,12 +444,12 @@ RestAPI.prototype.queueService = function(provider, service) {
  * network overhead, it greatly reduces the complexity of the quota management
  * logic required.
  *
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} service Service definition object
  * @param {object} tokenValues Token values used to populate the service call
  * @return {boolean} True if the service call should be processed per-item
  */
-RestAPI.prototype.invokeServicePerItem = function(provider, service, tokens) {
+Restup.prototype.invokeServicePerItem = function(provider, service, tokens) {
   var itemField = clone(tokens[service.quotaField]),
       root = this;
   
@@ -471,10 +474,10 @@ RestAPI.prototype.invokeServicePerItem = function(provider, service, tokens) {
  *
  * Build and execute a service request.
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} service Service definition object
  */
-RestAPI.prototype.invokeService = function(provider, service) {
+Restup.prototype.invokeService = function(provider, service) {
   var params     = service.parameters,
       root       = this,
       query      = [];
@@ -512,11 +515,12 @@ RestAPI.prototype.invokeService = function(provider, service) {
   }  
   
   /** Build final request */
+  // @TODO add no-SSL option
   var requestOptions = {
     url: 'https://' + service.endpoint + service.path + '?' + query.join('&'),
     method: service.method || 'GET',
     headers: service.headers || {},
-    json: service.format === 'JSON'
+    json: service.format === 'JSON',
   }
   
   /** Add AWSv4 request options */
@@ -531,13 +535,18 @@ RestAPI.prototype.invokeService = function(provider, service) {
   
   /** Add body data to request if present, and content MD5 header. Serialize
     * body object if it is in object form */
+  // @TODO check for XML body type and handle appropriately
   if (service.body) {
-    if (typeof service.body === 'object' && !requestOptions.json) {
-      service.body = qs.stringify(service.body);
+    if (typeof service.body === 'object' 
+      && !requestOptions.json && !service.format === 'XML') {
+        service.body = qs.stringify(service.body);
     }
     
     requestOptions.body = service.body;
   }
+  
+  //debug
+  console.log(JSON.stringify(requestOptions, null, 2));
   
   /** Send service request */
   request(requestOptions, function(err, response, body) {
@@ -585,10 +594,10 @@ RestAPI.prototype.invokeService = function(provider, service) {
  * seperate function here for evoking completion callbacks and emitting the
  * response event.
  * 
- * @this {RestAPI}
+ * @this {Restup}
  * @param {object} service Service response object
  */
-RestAPI.prototype.returnService = function(provider, service) {
+Restup.prototype.returnService = function(provider, service) {
   var dataMap   = service.inputs.dataMap || provider.dataMap,
       dataMerge = service.inputs.dataMerge,
       mapKey    = service.map || service.name,
@@ -618,7 +627,7 @@ RestAPI.prototype.returnService = function(provider, service) {
   this.emit(event, service.bodyFinal, provider, service);    
 }
 
-RestAPI.prototype.getProviders = function(hasTag) {
+Restup.prototype.getProviders = function(hasTag) {
   var providers = [],
       root      = this;
   
@@ -631,7 +640,7 @@ RestAPI.prototype.getProviders = function(hasTag) {
   return providers;
 }
 
-RestAPI.prototype.getProvider = function(provider) {
+Restup.prototype.getProvider = function(provider) {
   return this.providers[provider] || {};
 }
 

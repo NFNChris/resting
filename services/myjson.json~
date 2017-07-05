@@ -1,0 +1,17 @@
+{
+  "services": [
+    {
+      "name": "MyJSON",
+      "endpoint": "api.myjson.com",    
+      "method": "POST",
+      "format": "JSON",
+      "children": [
+        {
+          "name": "new",
+          "path": "/bins",
+          "body": "{{data}}"
+        }
+      ]
+    }
+  ]
+}

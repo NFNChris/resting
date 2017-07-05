@@ -1,0 +1,19 @@
+{
+
+  "FixerIO" : {
+    "servicesFile": "fixerio.json",
+    "tags": [ "currency" ]
+  },
+  
+  "Callook" : {
+    "servicesFile": "callook.json",
+    "tags": [ "ham radio" ]
+  },
+  
+  "MyJSON": {
+    "servicesFile": "myjson.json",
+    "tags": [ "datastore" ]
+  }
+  
+}
+  

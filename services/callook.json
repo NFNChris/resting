@@ -1,0 +1,16 @@
+{
+  "services": [
+    {
+      "name": "Callook.info",
+      "endpoint": "callook.info",    
+      "method": "GET",
+      "format": "XML",
+      "children": [
+        {
+          "name": "callsign",
+          "path": "/{{callsign}}/xml"
+        }
+      ]
+    }
+  ]
+}

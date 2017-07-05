@@ -1,0 +1,28 @@
+{
+  "services": [
+    {
+      "name": "Church Calendar",
+      "endpoint": "calapi.inadiutorium.cz/0/en",    
+      "method": "GET",
+      "format": "JSON",
+      "children": [
+        {
+          "name": "latest",
+          "path": "/latest",
+          "parameters": {
+            "base": "{{sourceCurrency}}",
+            "symbols": "{{targetCurrencies}}"
+          }
+        },
+        {
+          "name": "asOf",
+          "path": "/{{asOf}}",
+          "parameters": {
+            "base": "{{sourceCurrency}}",
+            "symbols": "{{targetCurrencies}}"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "services": [
+    {
+      "name": "HTTPBin",
+      "endpoint": "httpbin.org",    
+      "method": "POST",
+      "format": "XML",
+      "children": [
+        {
+          "name": "post",
+          "path": "/post",
+          "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?><GetItemRequest xmlns=\"urn:ebay:apis:eBLBaseComponents\"><RequesterCredentials><eBayAuthToken>{{@eBayAuthToken}}</eBayAuthToken></RequesterCredentials><ErrorLanguage>en_US</ErrorLanguage><WarningLevel>High</WarningLevel><ItemID>{{id}}</ItemID></GetItemRequest>"
+        }
+      ]
+    }
+  ]
+}
