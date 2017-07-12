@@ -1,5 +1,5 @@
 {
-  "name": "json-service",
+  "name": "resting",
   "version": "0.0.0",
   "description": "Define and Consume REST Services via JSON",
   "main": "index.js",
@@ -29,7 +29,7 @@
     "crypto": "0.0.3",
     "csv": "^1.1.1",
     "fs": "0.0.1-security",
-    "json-transmute": "^0.1.0",
+    "json-transmute": "^0.1.4",
     "moment": "^2.18.1",
     "querystring": "^0.2.0",
     "rapidx2j": "^0.1.0",
