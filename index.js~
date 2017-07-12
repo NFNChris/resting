@@ -13,10 +13,10 @@ var crypto    = require('crypto'),
     fs        = require('fs');
     
 // Module exports
-module.exports = Resting;
+module.exports = Restup;
 
 // Constructor
-function Resting(options) {
+function Restup(options) {
   var root = this;
   
   options        = options || {};
@@ -58,10 +58,10 @@ function Resting(options) {
   events.EventEmitter.call(this);
 }
 
-/** Extend Resting as an EventEmitter */
-util.inherits(Resting, events.EventEmitter);
+/** Extend Restup as an EventEmitter */
+util.inherits(Restup, events.EventEmitter);
 
-Resting.prototype.call = function(service, provider, inputs, callback) {
+Restup.prototype.call = function(service, provider, inputs, callback) {
   var root = this;
 
   if (!provider || typeof provider === 'object') {
@@ -88,11 +88,11 @@ Resting.prototype.call = function(service, provider, inputs, callback) {
  * provided in a tree format.  This facilitates brevity within the services
  * definition file(s).
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {array} services Array of services (or child services) to process
  * @param {object} parentBuild Parent service parameters object
  */
-Resting.prototype.addServices = function(provider, services, parentBuild) {
+Restup.prototype.addServices = function(provider, services, parentBuild) {
   var root  = this;
   
   parentBuild            = parentBuild            || {};
@@ -146,13 +146,13 @@ Resting.prototype.addServices = function(provider, services, parentBuild) {
 /**
  * Provide a method to access a service
  *
- * Prototype a function on the Resting object that provides access to a 
+ * Prototype a function on the Restup object that provides access to a 
  * specific service as defined the service build object.
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} build Service creation parameters
  */
-Resting.prototype.addService = function(provider, service) {
+Restup.prototype.addService = function(provider, service) {
   var root     = this,
       aliasArr = service.alias || [];
       
@@ -218,11 +218,11 @@ Resting.prototype.addService = function(provider, service) {
  * Iterate over an object's keys and performs token replacement using the values
  * contained within inputs.
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} parameters Service parameters requiring replacement
  * @param {object} inputs Replacement values
  */
-Resting.prototype.tokenReplaceAll = function(params, inputs) {
+Restup.prototype.tokenReplaceAll = function(params, inputs) {
   var regExp = new RegExp('\{\{(.+?)\}\}', 'g'),
       root   = this;
       
@@ -285,11 +285,11 @@ Resting.prototype.tokenReplaceAll = function(params, inputs) {
 /**
  * Perform parameter token replacement for a given string value
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} parameters Service parameters requiring replacement
  * @param {object} inputs Replacement values
  */
-Resting.prototype.tokenReplace = function(value, inputs) {
+Restup.prototype.tokenReplace = function(value, inputs) {
   var regExp = new RegExp('\{\{(.+?)\}\}', 'gm');
 
   while (tokenMatch = regExp.exec(value)) {
@@ -314,10 +314,10 @@ Resting.prototype.tokenReplace = function(value, inputs) {
  * quota pools here when services are first defined.  Services with shared 
  * pools will specify a quotaGroup parameter.
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} tokens Token key value pairs
  */
-Resting.prototype.initQuota = function(provider, service) {
+Restup.prototype.initQuota = function(provider, service) {
   if (service.quotaPool) {
     service.quotaGroup = service.quotaGroup || service.name;
     
@@ -345,10 +345,10 @@ Resting.prototype.initQuota = function(provider, service) {
  * than one field is present from quotaFields in a given call, the field with 
  * the largest number of items will be used to decrement the available pool.
  *
- * @this {Resting}
+ * @this {Restup}
  * @param {object} quota Quota definition object
  */
-Resting.prototype.consumeQuota = function(provider, service) {
+Restup.prototype.consumeQuota = function(provider, service) {
   var quota      = provider.quotas[service.quotaGroup],
       fields     = service.quotaFields,
       itemCounts = [];
@@ -381,10 +381,10 @@ Resting.prototype.consumeQuota = function(provider, service) {
  * available call pool or invoke any services backlogged in the queue as calls
  * become available.
  *
- * @this {Resting}
+ * @this {Restup}
  * @param {object} quota Quota definition object
  */
-Resting.prototype.restoreQuota = function(provider, service, offset) {
+Restup.prototype.restoreQuota = function(provider, service, offset) {
   var quota = provider.quotas[service.quotaGroup],
       root  = this;
   
@@ -417,10 +417,10 @@ Resting.prototype.restoreQuota = function(provider, service, offset) {
  * available immediately for call.  Available services (and services without
  * quotas) are called immediately.
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} service Service definition object
  */
-Resting.prototype.queueService = function(provider, service) {
+Restup.prototype.queueService = function(provider, service) {
   var quotaGroup = service.quotaGroup || service.name,
       quota      = provider.quotas[quotaGroup];
       
@@ -444,12 +444,12 @@ Resting.prototype.queueService = function(provider, service) {
  * network overhead, it greatly reduces the complexity of the quota management
  * logic required.
  *
- * @this {Resting}
+ * @this {Restup}
  * @param {object} service Service definition object
  * @param {object} tokenValues Token values used to populate the service call
  * @return {boolean} True if the service call should be processed per-item
  */
-Resting.prototype.invokeServicePerItem = function(provider, service, tokens) {
+Restup.prototype.invokeServicePerItem = function(provider, service, tokens) {
   var itemField = clone(tokens[service.quotaField]),
       root = this;
   
@@ -474,10 +474,10 @@ Resting.prototype.invokeServicePerItem = function(provider, service, tokens) {
  *
  * Build and execute a service request.
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} service Service definition object
  */
-Resting.prototype.invokeService = function(provider, service) {
+Restup.prototype.invokeService = function(provider, service) {
   var params     = service.parameters,
       root       = this,
       query      = [];
@@ -594,10 +594,10 @@ Resting.prototype.invokeService = function(provider, service) {
  * seperate function here for evoking completion callbacks and emitting the
  * response event.
  * 
- * @this {Resting}
+ * @this {Restup}
  * @param {object} service Service response object
  */
-Resting.prototype.returnService = function(provider, service) {
+Restup.prototype.returnService = function(provider, service) {
   var dataMap   = service.inputs.dataMap || provider.dataMap,
       dataMerge = service.inputs.dataMerge,
       mapKey    = service.map || service.name,
@@ -627,7 +627,7 @@ Resting.prototype.returnService = function(provider, service) {
   this.emit(event, service.bodyFinal, provider, service);    
 }
 
-Resting.prototype.getProviders = function(hasTag) {
+Restup.prototype.getProviders = function(hasTag) {
   var providers = [],
       root      = this;
   
@@ -640,7 +640,7 @@ Resting.prototype.getProviders = function(hasTag) {
   return providers;
 }
 
-Resting.prototype.getProvider = function(provider) {
+Restup.prototype.getProvider = function(provider) {
   return this.providers[provider] || {};
 }
 
