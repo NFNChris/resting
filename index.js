@@ -32,6 +32,8 @@ function Resting(options) {
   this.parseXmlParams = {
     preserve_case: true,
     parse_boolean_values: false,
+    parse_int_numbers: false,
+    parse_float_numbers: false,    
   }
   
   /** Begin adding services */
@@ -64,7 +66,11 @@ util.inherits(Resting, events.EventEmitter);
 Resting.prototype.call = function(service, provider, inputs, callback) {
   var root = this;
 
-  if (!provider || typeof provider === 'object') {
+  if (!provider) {
+    Object.keys(this.providers).forEach(function(key) {
+      root.call(service, key, inputs, callback);
+    });
+  } else if (typeof provider === 'object') {
     Object.keys(this.providers).forEach(function(key) {
       root.call(service, key, provider, inputs);
     });
@@ -164,7 +170,7 @@ Resting.prototype.addService = function(provider, service) {
   
     /** Clone the service definition object so that we don't disrupt defaults */
     var build = clone(service);
-        
+    
     /** Ensure build.quota is referenced directly to service.quota, and add the
       * raw tokens to the service build object in case they are needed later */
     build.quota  = service.quota;    
@@ -186,7 +192,7 @@ Resting.prototype.addService = function(provider, service) {
     Object.keys(provider.tokens || {}).forEach(function(key) {
       build.inputs['@' + key] = provider.tokens[key];
     });
-  
+    
     /** Perform token individual token replacements */
     //build.endpoint = root.tokenReplace(build.endpoint, build.inputs);
     //build.path = root.tokenReplace(build.path, build.inputs);
@@ -222,14 +228,14 @@ Resting.prototype.addService = function(provider, service) {
  * @param {object} parameters Service parameters requiring replacement
  * @param {object} inputs Replacement values
  */
-Resting.prototype.tokenReplaceAll = function(params, inputs) {
+Resting.prototype.tokenReplaceAll = function(params, inputs, subLevel) {
   var regExp = new RegExp('\{\{(.+?)\}\}', 'g'),
       root   = this;
       
   /** Iterate over each parameter defined for this service */
   Object.keys(params || {}).forEach(function(key) {
-    var newKey;
-  
+    var newKey;     
+    
     /** Perform key token replacement */
     while (tokenMatch = regExp.exec(key)) {
       if (tokenMatch[1] in inputs) {
@@ -242,12 +248,11 @@ Resting.prototype.tokenReplaceAll = function(params, inputs) {
       }
     }
     
-    /** If the key value is itself an object, perform replacement recursively */
     if (typeof params[key] === 'object') {
-      root.tokenReplaceAll(params[key], inputs);
+      root.tokenReplaceAll(params[key], inputs, true);
       return;
     }
-  
+    
     /** Iteratively search for tokens via regular expression matching. 
       * A given parameter may contain more than one replacement token. */
     while (tokenMatch = regExp.exec(params[key])) {
@@ -275,7 +280,7 @@ Resting.prototype.tokenReplaceAll = function(params, inputs) {
         } else {
           params[key] = params[key].replace(tokenSymbol, tokenValue);
         }
-      } else {
+      } else if (subLevel) {
         delete params[key];
       }
     }
@@ -354,7 +359,7 @@ Resting.prototype.consumeQuota = function(provider, service) {
       itemCounts = [];
       
   if (!quota) return;
-
+  
   /** Decrement the available call pool depending on quotaType */
   if (service.quotaType == 'perItem' && fields && fields.length) {
   
@@ -545,9 +550,6 @@ Resting.prototype.invokeService = function(provider, service) {
     requestOptions.body = service.body;
   }
   
-  //debug
-  console.log(JSON.stringify(requestOptions, null, 2));
-  
   /** Send service request */
   request(requestOptions, function(err, response, body) {
     var csvOptions      = service.formatOptions || { columns: true };
@@ -621,7 +623,7 @@ Resting.prototype.returnService = function(provider, service) {
   }
   
   /** Invoke callback is one of was provided */
-  if (service.callback) service.callback(service.bodyFinal, service);
+  if (service.callback) service.callback(service.bodyFinal, provider, service);
 
   /** Emit event for this service's completion */
   this.emit(event, service.bodyFinal, provider, service);    
