@@ -1,6 +1,6 @@
 {
   "name": "resting",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Define and Consume REST Services via JSON",
   "main": "index.js",
   "scripts": {
