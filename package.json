@@ -29,7 +29,7 @@
     "crypto": "0.0.3",
     "csv": "^1.1.1",
     "fs": "0.0.1-security",
-    "json-transmute": "^0.1.7",
+    "json-transmute": "^0.1.8",
     "moment": "^2.18.1",
     "querystring": "^0.2.0",
     "rapidx2j": "^0.1.0",
