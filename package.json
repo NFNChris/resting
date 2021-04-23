@@ -26,9 +26,11 @@
   },
   "homepage": "https://github.com/NFNChris/resting#readme",
   "dependencies": {
+    "clone": "^2.1.2",
     "csv": "^1.1.1",
     "fs": "0.0.1-security",
     "json-transmute": "latest",
+    "merge": "^2.1.1",
     "moment": "^2.18.1",
     "rapidx2j": "latest",
     "request": "latest"
