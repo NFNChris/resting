@@ -1,7 +1,5 @@
 // Dependencies
-var crypto    = require('crypto'),
-    request   = require('request'),
-    qs        = require('querystring'),
+var request   = require('request'),
     merge     = require('merge'),
     clone     = require('clone'),
     util      = require('util'),
@@ -24,6 +22,8 @@ function Resting(options) {
   this.providers = JSON.parse(fs.readFileSync(this.path + 'providers.json'));
   this.quotas    = {};
   this.services  = {};
+  
+  this.authProviders = {};
   
   this.globalTokens = { 
     '@utc': function() { return new Date().toISOString(); } 
@@ -84,6 +84,20 @@ Resting.prototype.call = function(service, provider, inputs, callback) {
   } else {
     throw new Error('Provider or service not found: [ ' + provider + ', ' + service + ' ]');
   }
+}
+
+/** 
+  * Add provider specific request replacement
+  *
+  * Allow drop in replacements for request on a per-provider basis.  Enables
+  * custom authorization / request signage (e.g. Amazon)
+  *
+  * @this {Resting}
+  * @param {string} provider Provider name whose services will use auth
+  * @param {callback} auth Request replacement function
+  */
+Resting.prototype.addAuthProvider = function(provider, auth) {
+  this.authProviders[provider] = auth;
 }
 
 /**
@@ -487,37 +501,16 @@ Resting.prototype.invokeService = function(provider, service) {
       root       = this,
       query      = [];
       
+  /** Configure default request method */
+  var authorize = this.authProviders[provider] || request;
+      
   /** Service request method defaults to GET */
   service.method = service.method || 'GET';
-  
-  /** Prepare to sign request if @SignatureKey is provided as a parameter */
-  if ('@SignatureKey' in params) {
-    var sign = crypto.createHmac("sha256", params['@SignatureKey']);
-    delete params['@SignatureKey'];
-  }
-  
-  /** Prepare for AWSv4 request signing if the @AWS parameter is present */
-  if ('@AWS' in params) {
-    var aws = params['@AWS'];
-    delete params['@AWS'];
-  }  
-  
+    
   /** Build array of url query parameters. */
   Object.keys(params).sort().forEach(function (key) {
     query.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key]));
   });
-  
-  /** Sign the request if required */
-  if (sign) {
-    sign.update(
-      service.method + "\n" + 
-      service.endpoint + "\n" + 
-      service.path + "\n" + 
-      query.join('&')
-    );
-
-    query.push('Signature=' + encodeURIComponent(sign.digest('base64')));  
-  }  
   
   /** Build final request */
   // @TODO add no-SSL option
@@ -527,9 +520,6 @@ Resting.prototype.invokeService = function(provider, service) {
     headers: service.headers || {},
     json: service.format === 'JSON',
   }
-  
-  /** Add AWSv4 request options */
-  if (aws) requestOptions.aws = aws;
   
   /** If a service body has been defined, and it contains a child with 
     * the reserved key '@body', set the request body to be the direct contents
@@ -550,13 +540,20 @@ Resting.prototype.invokeService = function(provider, service) {
     requestOptions.body = service.body;
   }
   
+  /** If service.form has been specified, format request as a form data
+    * submission */
+  if (service.form) {
+    requestOptions.method = 'POST';
+    requestOptions.form = service.form;
+  }
+  
   /** Send service request */
-  request(requestOptions, function(err, response, body) {
-    var csvOptions      = service.formatOptions || { columns: true };
+  authorize(requestOptions, function(err, response, body) {
+    var csvOptions = service.formatOptions || { columns: true };
     
     /** Store the original response body on the service response object */
     service.bodyRaw = body;
-        
+            
     /** Update quota pool and queue for this service if present */
     if (service.quotaPool) root.restoreQuota(provider, service);
     
@@ -569,6 +566,8 @@ Resting.prototype.invokeService = function(provider, service) {
     switch (service.format.toUpperCase()) {
       case 'CSV':
         csv.parse(body, csvOptions, function(err, output) {
+          if (err) throw err;
+        
           service.bodyParsed = { payload: output };
           root.returnService(provider, service);
         });
@@ -623,7 +622,11 @@ Resting.prototype.returnService = function(provider, service) {
   }
   
   /** Invoke callback is one of was provided */
-  if (service.callback) service.callback(service.bodyFinal, provider, service);
+  if (service.callback) {
+    service.callback(service.bodyFinal, provider, service);  
+  } else if (service.inputs.callback) {
+    service.inputs.callback(service.bodyFinal, provider, service);
+  }
 
   /** Emit event for this service's completion */
   this.emit(event, service.bodyFinal, provider, service);    
