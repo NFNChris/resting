@@ -24,6 +24,7 @@ function Resting(options) {
   this.services  = {};
   
   this.authProviders = {};
+  this.postProcessors = {};
   
   this.globalTokens = { 
     '@utc': function() { return new Date().toISOString(); } 
@@ -100,6 +101,23 @@ Resting.prototype.addAuthProvider = function(provider, auth) {
   this.authProviders[provider] = auth;
 }
 
+/** 
+  * Add provider and service specific response post-processor
+  *
+  * Allow post processing of service response data before subscribers are 
+  * notified of service call completion.  Specifically added to allow for
+  * response decription / decompression.
+  *
+  * @this {Resting}
+  * @param {string} provider Provider owning service
+  * @param {string} service Service whose response will route to post processor
+  * @param {callback} auth Request replacement function
+  */
+Resting.prototype.addPostProcessor = function(provider, service, callback) {
+  this.postProcessors[provider] = this.postProcessors[provider] || {};
+  this.postProcessors[provider][service] = callback;
+}
+
 /**
  * Add new services
  *
@@ -130,8 +148,6 @@ Resting.prototype.addServices = function(provider, services, parentBuild) {
     Object.keys(service).forEach(function(key) {
       switch(key) {
         case 'name':
-          //@TODO remove this - remnant of Amazon-only use
-          //build.parameters['Action'] = service[key];
           build[key] = service[key];
         break;
         //case 'body':
@@ -207,16 +223,8 @@ Resting.prototype.addService = function(provider, service) {
       build.inputs['@' + key] = provider.tokens[key];
     });
     
-    /** Perform token individual token replacements */
-    //build.endpoint = root.tokenReplace(build.endpoint, build.inputs);
-    //build.path = root.tokenReplace(build.path, build.inputs);
-    
     /** Perform object token replacements */
     root.tokenReplaceAll(build, build.inputs);
-    //if ('parameters' in build) 
-    //  root.tokenReplaceAll(build.parameters, build.inputs);
-    //if ('body' in build) 
-    //  root.tokenReplaceAll(build.body, build.inputs);
       
     /** Queue the service */
     root.queueService(provider, build);    
@@ -494,6 +502,7 @@ Resting.prototype.invokeServicePerItem = function(provider, service, tokens) {
  * Build and execute a service request.
  * 
  * @this {Resting}
+ * @param {object} provider Provider definition object
  * @param {object} service Service definition object
  */
 Resting.prototype.invokeService = function(provider, service) {
@@ -502,7 +511,7 @@ Resting.prototype.invokeService = function(provider, service) {
       query      = [];
       
   /** Configure default request method */
-  var authorize = this.authProviders[provider] || request;
+  var authorize = this.authProviders[provider.name] || request;
       
   /** Service request method defaults to GET */
   service.method = service.method || 'GET';
@@ -549,7 +558,6 @@ Resting.prototype.invokeService = function(provider, service) {
   
   /** Send service request */
   authorize(requestOptions, function(err, response, body) {
-    var csvOptions = service.formatOptions || { columns: true };
     
     /** Store the original response body on the service response object */
     service.bodyRaw = body;
@@ -557,35 +565,60 @@ Resting.prototype.invokeService = function(provider, service) {
     /** Update quota pool and queue for this service if present */
     if (service.quotaPool) root.restoreQuota(provider, service);
     
-    if (err) {
-      throw err;
-      return;
-    }
+    /* Call post processor function if defined for this provider + service */
+    if (provider.name in root.postProcessors 
+      && service.name in root.postProcessors[provider.name]) {
+        root.postProcessors[provider.name][service.name](
+          body, function(data) {
+            root.parseResponse(data, provider, service);        
+          }
+        );
+    } else {
+     root.parseResponse(body, provider, service);        
+    }    
 
-    /** Parse service response based upon the content-type header */
-    switch (service.format.toUpperCase()) {
-      case 'CSV':
-        csv.parse(body, csvOptions, function(err, output) {
-          if (err) throw err;
-        
-          service.bodyParsed = { payload: output };
-          root.returnService(provider, service);
-        });
-      break;
-      case 'XML':
-        service.bodyParsed = x2j.parse(body, root.parseXmlParams);
-        root.returnService(provider, service);
-      break;
-      case 'JSON':
-        service.bodyParsed = body;
-        root.returnService(provider, service);
-      break;
-      default:
-        service.bodyParsed = body;
-        root.returnService(provider, service);
-      break;
-    }        
   });
+}
+
+/**
+ * Parse service response.
+ *
+ * With the addition of service post processing, we moved service response 
+ * parsing to a separate function as it may be called after or in the absence
+ * of a post processing function.
+ * 
+ * @this {Resting}
+ * @param {object} body Service response body
+ * @param {object} provider Provider definition object
+ * @param {object} service Service definition object
+ */
+Resting.prototype.parseResponse = function(body, provider, service) {
+  var csvOptions = service.formatOptions || { columns: true };
+  var root = this;
+  
+  /** Parse service response based upon the content-type header */   
+  switch (service.format.toUpperCase()) {
+    case 'CSV':
+      csv.parse(body, csvOptions, function(err, output) {
+        if (err) throw err;
+      
+        service.bodyParsed = { payload: output };
+        root.returnService(provider, service);
+      });
+    break;
+    case 'XML':
+      service.bodyParsed = x2j.parse(body, this.parseXmlParams);
+      this.returnService(provider, service);
+    break;
+    case 'JSON':
+      service.bodyParsed = body;
+      this.returnService(provider, service);
+    break;
+    default:
+      service.bodyParsed = body;
+      this.returnService(provider, service);
+    break;
+  }        
 }
 
 /**
@@ -602,7 +635,8 @@ Resting.prototype.returnService = function(provider, service) {
   var dataMap   = service.inputs.dataMap || provider.dataMap,
       dataMerge = service.inputs.dataMerge,
       mapKey    = service.map || service.name,
-      event     = service.event || service.name;
+      event     = service.event || service.name,
+      root      = this;
       
   /** If dataMerge was included in inputs, add it to the response */
   if (dataMerge) {
@@ -620,6 +654,7 @@ Resting.prototype.returnService = function(provider, service) {
   } else {
     service.bodyFinal = service.bodyParsed;
   }
+  
   
   /** Invoke callback is one of was provided */
   if (service.callback) {
